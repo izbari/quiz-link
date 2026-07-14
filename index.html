@@ -453,7 +453,7 @@ function apply(s) {
   S = s;
   render();
 }
-const poll = () => api('state').then(apply).catch(() => {});
+const poll = () => api('state', { id: me.id }).then(apply).catch(() => {}); // id = kalp atışı (varlık algılama)
 poll();
 setInterval(poll, 1200);
 </script>

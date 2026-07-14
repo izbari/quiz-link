@@ -79,6 +79,7 @@
   .chip { background: var(--card); border: 2px solid var(--line); padding: 7px 10px 7px 16px; border-radius: 999px; font-weight: 700; font-size: 16px; animation: pop .35s cubic-bezier(.34,1.56,.64,1); display: inline-flex; align-items: center; gap: 8px; }
   .chip .kick { background: none; border: 0; color: var(--sub); cursor: pointer; font-size: 13px; font-weight: 800; padding: 2px 4px; border-radius: 6px; }
   .chip .kick:hover { color: var(--red); background: rgba(255,75,75,.12); }
+  .chip.off { opacity: .4; }
   @keyframes pop { from { transform: scale(.3); opacity: 0; } }
   .popAnim { animation: pop .35s cubic-bezier(.34,1.56,.64,1); }
 
@@ -558,7 +559,7 @@ function render() {
     $('playerCount').textContent = `Katılan: ${S.players.length}`;
     if (S.players.length !== prev.playerCount) popEl($('playerCount'));
     $('playerChips').innerHTML = S.players.map(p =>
-      `<span class="chip">${avSvg(p.avatar, 22)} ${esc(p.name)}<button class="kick" data-kick="${esc(p.id)}" title="Çıkar">✕</button></span>`
+      `<span class="chip${p.online === false ? ' off' : ''}"${p.online === false ? ' title="bağlantı koptu"' : ''}>${avSvg(p.avatar, 22)} ${esc(p.name)}<button class="kick" data-kick="${esc(p.id)}" title="Çıkar">✕</button></span>`
     ).join('');
     $('playerChips').querySelectorAll('[data-kick]').forEach(b => (b.onclick = () => api('kick', { id: b.dataset.kick })));
   }
@@ -605,7 +606,8 @@ function render() {
     }
 
     if (S.phase === 'question') {
-      $('answeredMeta').textContent = `${S.answeredCount} / ${S.players.length} cevapladı`;
+      const online = S.players.filter(p => p.online !== false).length;
+      $('answeredMeta').textContent = `${S.answeredCount} / ${online} cevapladı`; // aktif oyuncular (kopanlar bekletmez)
       const dur = S.question.time * 1000;
       const tick = () => {
         const msLeft = Math.max(0, S.endsAt - nowSrv());
