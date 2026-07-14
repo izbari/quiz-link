@@ -1,18 +1,421 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Quiz</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Quiz'e Katıl</title>
+<style>
+  :root {
+    --bg: #131f24; --card: #202f36; --line: #37464f; --txt: #f1f7fb; --sub: #8ba6b1;
+    --green: #58cc02; --green-d: #46a302; --blue: #1cb0f6; --blue-d: #1899d6;
+    --red: #ff4b4b; --red-d: #d33131; --yellow: #ffc800; --yellow-d: #e5a600;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--txt); min-height: 100dvh; display: flex; flex-direction: column;
+    overflow-x: hidden;
+  }
+  body.good { animation: flashG .7s; }
+  body.bad  { animation: shake .5s; }
+  @keyframes flashG { 0% { background: #1d3a12; } 100% { background: var(--bg); } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-10px); } 40%,80% { transform: translateX(10px); } }
+
+  svg.ic { vertical-align: -3px; }
+  .blob { position: fixed; width: 340px; height: 340px; border-radius: 50%; filter: blur(80px); opacity: .14; z-index: -1; animation: drift 14s ease-in-out infinite alternate; pointer-events: none; }
+  .blob.b1 { background: var(--green); top: -100px; left: -100px; }
+  .blob.b2 { background: var(--blue); bottom: -120px; right: -120px; animation-delay: -7s; }
+  @keyframes drift { to { transform: translate(70px, 50px) scale(1.2); } }
+
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px; gap: 18px; text-align: center; }
+  .hidden { display: none !important; }
+  .sec { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; animation: zoomIn .4s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes zoomIn { from { transform: scale(.75); opacity: 0; } }
+
+  h1 { font-size: 28px; font-weight: 800; }
+  .sub { color: var(--sub); font-size: 16px; font-weight: 600; }
+  .big { font-size: 64px; }
+  .bounce { animation: bounce 1.2s ease-in-out 2; } /* girişte 2 kez zıplar, sonra durur */
+  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+
+  /* Join */
+  #avatars { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 320px; }
+  .av { font-size: 30px; width: 56px; height: 56px; border-radius: 16px; background: var(--card); border: 2px solid var(--line); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform .15s; }
+  .av.sel { border-color: var(--green); box-shadow: 0 0 0 3px rgba(88,204,2,.3); transform: scale(1.12); }
+  input {
+    font: inherit; font-size: 19px; font-weight: 700; text-align: center; color: var(--txt);
+    padding: 15px 18px; border-radius: 16px; border: 2px solid var(--line); background: var(--card);
+    width: min(320px, 82vw); outline: none;
+  }
+  input:focus { border-color: var(--blue); }
+  button.cta {
+    font: inherit; font-weight: 800; font-size: 18px; letter-spacing: 1px; text-transform: uppercase;
+    border: 0; cursor: pointer; padding: 15px 44px; border-radius: 16px;
+    background: var(--green); color: #063e00; box-shadow: 0 5px 0 var(--green-d);
+  }
+  button.cta:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--green-d); }
+
+  /* Intro */
+  #introQNum { font-size: 20px; font-weight: 800; color: var(--yellow); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Answer */
+  #qTimer { font-size: 22px; font-weight: 800; color: var(--sub); }
+  #qQuestion {
+    font-size: 18px; font-weight: 800; line-height: 1.35; width: 100%; max-width: 480px;
+    background: var(--card); border: 2px solid var(--line); border-bottom-width: 5px;
+    border-radius: 16px; padding: 14px 18px;
+  }
+  #answerGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 480px; flex: 1; max-height: 58dvh; }
+  .abtn {
+    border: 0; border-radius: 20px; color: #fff; font-size: 42px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px;
+    animation: pop .35s cubic-bezier(.34,1.56,.64,1) backwards;
+  }
+  .abtn:nth-child(2){animation-delay:.06s}.abtn:nth-child(3){animation-delay:.12s}.abtn:nth-child(4){animation-delay:.18s}
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } }
+  .abtn small { font-size: 15px; font-weight: 800; line-height: 1.25; }
+  .abtn:active { transform: translateY(5px) scale(.98); box-shadow: none !important; }
+  .abtn.c0 { background: var(--red); box-shadow: 0 6px 0 var(--red-d); }
+  .abtn.c1 { background: var(--blue); box-shadow: 0 6px 0 var(--blue-d); }
+  .abtn.c2 { background: var(--yellow); box-shadow: 0 6px 0 var(--yellow-d); color: #3c2c00; }
+  .abtn.c3 { background: var(--green); box-shadow: 0 6px 0 var(--green-d); }
+
+  /* Result */
+  .points { font-size: 34px; font-weight: 800; color: var(--green); }
+  .points.zero { color: var(--sub); }
+  .rankline { font-size: 18px; background: var(--card); border: 2px solid var(--line); padding: 11px 24px; border-radius: 999px; font-weight: 800; }
+  .flame { font-size: 20px; color: var(--yellow); background: rgba(255,200,0,.12); border: 2px solid rgba(255,200,0,.35); border-radius: 999px; padding: 7px 18px; font-weight: 800; animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
+
+  /* Confetti */
+  #confetti i { position: fixed; top: -24px; width: 9px; height: 15px; border-radius: 3px; animation: fall linear infinite; z-index: 50; }
+  @keyframes fall { to { transform: translateY(112vh) rotate(720deg); } }
+</style>
 </head>
-<body style="margin:0;font-family:-apple-system,sans-serif;background:#131f24;color:#f1f7fb;display:grid;place-items:center;height:100vh">
-<p style="font-weight:700">Quiz'e yönlendiriliyorsun…</p>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div>
+<main>
+  <section id="join" class="sec">
+    <div class="bounce" id="joinPreview"></div>
+    <h1>Quiz'e Katıl</h1>
+    <div class="sub">Avatarını seç</div>
+    <div id="avatars"></div>
+    <input id="nameInput" placeholder="Adın" maxlength="20" autocomplete="off">
+    <button class="cta" id="joinBtn">Katıl</button>
+  </section>
+
+  <section id="wait" class="sec hidden">
+    <div class="bounce" id="waitAvatar"></div>
+    <h1 id="waitName"></h1>
+    <div class="sub">Ekrana bak, birazdan başlıyor!</div>
+  </section>
+
+  <section id="gate" class="sec hidden">
+    <div class="big" id="gateIcon"></div>
+    <h1 id="gateTitle"></h1>
+    <div class="sub" id="gateSub"></div>
+  </section>
+
+  <section id="intro" class="sec hidden">
+    <div class="big bounce" id="introIcon"></div>
+    <div id="introQNum"></div>
+    <h1>Hazır ol!</h1>
+  </section>
+
+  <section id="answer" class="sec hidden">
+    <div id="qTimer"></div>
+    <div id="qQuestion"></div>
+    <div id="answerGrid"></div>
+  </section>
+
+  <section id="locked" class="sec hidden">
+    <div class="big bounce" id="lockedIcon"></div>
+    <h1>Cevabın alındı!</h1>
+    <div class="sub">Doğru mu bakalım...</div>
+  </section>
+
+  <section id="result" class="sec hidden">
+    <div class="big" id="resIcon"></div>
+    <h1 id="resTitle"></h1>
+    <div class="points" id="resPoints"></div>
+    <div class="flame hidden" id="resStreak"></div>
+    <div class="rankline" id="resRank"></div>
+  </section>
+
+  <section id="final" class="sec hidden">
+    <div class="big bounce" id="finIcon"></div>
+    <h1 id="finTitle"></h1>
+    <div class="rankline" id="finScore"></div>
+  </section>
+</main>
+<div id="confetti"></div>
+
 <script>
-  // QR'lar bu sabit sayfayı gösterir; TARGET o günkü sunucuya işaret eder (start-public.sh günceller)
-  var TARGET = "https://cornell-existing-doctors-accessories.trycloudflare.com";
-  var q = new URLSearchParams(location.search).get('q');
-  location.replace(TARGET + (q ? '/?q=' + q : '/'));
+// Bulut backend: Supabase RPC (her şey tek fonksiyonda, atomik)
+const API = 'https://cowiamswgtlthjxflflg.supabase.co/rest/v1/rpc/quiz_api';
+const APIKEY = 'sb_publishable_W97JQw6TPElmBq2eeve64Q_6O5eMenV';
+async function api(action, payload = {}) {
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: APIKEY }, body: JSON.stringify({ action, payload }) });
+  return r.json();
+}
+
+const SHAPES = ['▲', '◆', '●', '■'];
+const $ = id => document.getElementById(id);
+let S = null, timerInt = null;
+let answeredQ = -1; // bu client'ın cevapladığı soru index'i
+
+/* Saat kayması düzeltmesi — geri sayım sunucu saatiyle hesaplanır */
+let clockOffset = 0;
+const nowSrv = () => Date.now() + clockOffset;
+
+/* SVG ikonlar */
+const ICONS = {
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  chart: '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  hourglass: '<path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.828V2"/>',
+};
+const ic = (n, s = 18, color = '') => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"${color ? ` style="color:${color}"` : ''}>${ICONS[n]}</svg>`;
+
+/* Puan sayacı animasyonu */
+function countUp(el, to, prefix = '+') {
+  const t0 = performance.now(), dur = 700;
+  (function step(t) {
+    const k = Math.min(1, (t - t0) / dur);
+    el.textContent = prefix + Math.round(to * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
+// crypto.randomUUID sadece HTTPS/localhost'ta var; LAN IP'den (http://192.168...) girenlerde yok
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'p-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+
+/* Üretilmiş SVG avatarlar (emoji yok — her cihazda aynı görünür) */
+const AV_BG = ['#ff4b4b', '#1cb0f6', '#ffc800', '#58cc02', '#ce82ff', '#ff9600'];
+function avSvg(seed, size = 24) {
+  const s = (parseInt(seed, 10) || 0) % 12;
+  const bg = AV_BG[s % 6];
+  const eyes = s % 2
+    ? `<path d="M11 20 q5 -7 10 0" stroke="#fff" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+       <path d="M27 20 q5 -7 10 0" stroke="#fff" stroke-width="3.4" fill="none" stroke-linecap="round"/>`
+    : `<circle cx="16" cy="19" r="5.5" fill="#fff"/><circle cx="32" cy="19" r="5.5" fill="#fff"/>
+       <circle cx="17.5" cy="20.2" r="2.6" fill="rgba(0,0,0,.72)"/><circle cx="33.5" cy="20.2" r="2.6" fill="rgba(0,0,0,.72)"/>`;
+  const mouths = [
+    `<path d="M16 30 q8 9 16 0" stroke="#fff" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+     <circle cx="9" cy="27" r="3" fill="rgba(255,255,255,.35)"/><circle cx="39" cy="27" r="3" fill="rgba(255,255,255,.35)"/>`,
+    `<ellipse cx="24" cy="32" rx="7" ry="5.5" fill="#fff"/><ellipse cx="24" cy="34.5" rx="4" ry="2.6" fill="#ff8fa3"/>`,
+    `<circle cx="24" cy="31.5" r="4" fill="#fff"/>`,
+  ];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" style="vertical-align:middle"><rect width="48" height="48" rx="14" fill="${bg}"/>${eyes}${mouths[s % 3]}</svg>`;
+}
+
+const me = {
+  id: localStorage.getItem('qid') || uuid(),
+  name: localStorage.getItem('qname') || '',
+  avatar: localStorage.getItem('qavatar') || String(Math.floor(Math.random() * 12)),
+};
+localStorage.setItem('qid', me.id);
+
+// Tur kilidi: QR'daki ?q=N sadece o tur aktifken oyuna alır (slayt sırası gelmeden girilemez)
+const GATE = parseInt(new URLSearchParams(location.search).get('q'), 10) || 0;
+let joinSent = false;
+function ensureJoin() {
+  if (me.name && !joinSent && (!GATE || (S && S.quizIndex === GATE))) {
+    joinSent = true;
+    join(me.name);
+  }
+}
+
+/* Avatar seçici */
+function renderAvatars() {
+  $('avatars').innerHTML = Array.from({ length: 12 }, (_, i) =>
+    `<div class="av ${String(i) === me.avatar ? 'sel' : ''}" onclick="pickAv('${i}')">${avSvg(i, 38)}</div>`
+  ).join('');
+  $('joinPreview').innerHTML = avSvg(me.avatar, 84);
+}
+function pickAv(a) { me.avatar = String(a); renderAvatars(); }
+renderAvatars();
+$('introIcon').innerHTML = ic('flag', 58, 'var(--yellow)');
+$('lockedIcon').innerHTML = ic('hourglass', 58, 'var(--blue)');
+
+function join(name) {
+  me.name = name;
+  localStorage.setItem('qname', name);
+  localStorage.setItem('qavatar', me.avatar);
+  api('join', { id: me.id, name, avatar: me.avatar });
+}
+$('joinBtn').onclick = () => {
+  const n = $('nameInput').value.trim();
+  if (!n) return;
+  me.name = n;
+  localStorage.setItem('qname', n);
+  localStorage.setItem('qavatar', me.avatar);
+  ensureJoin(); // tur kilitliyse POST sırası gelince atılır
+  render();
+};
+$('nameInput').onkeydown = e => { if (e.key === 'Enter') $('joinBtn').onclick(); };
+
+function sendAnswer(index) {
+  answeredQ = S.qIndex;
+  navigator.vibrate && navigator.vibrate(40);
+  api('answer', { id: me.id, index });
+  render();
+}
+
+function myRank() {
+  const i = S.players.findIndex(p => p.id === me.id);
+  return i < 0 ? null : { rank: i + 1, score: S.players[i].score, streak: S.players[i].streak || 0, correct: S.players[i].correct || 0 };
+}
+
+function show(id) {
+  ['join','wait','gate','intro','answer','locked','result','final'].forEach(s => $(s).classList.add('hidden'));
+  $(id).classList.remove('hidden');
+}
+function flash(cls) {
+  document.body.classList.remove('good', 'bad');
+  void document.body.offsetWidth; // animasyonu yeniden tetikle
+  document.body.classList.add(cls);
+}
+function confettiBurst() {
+  const box = $('confetti');
+  if (box.childElementCount) return;
+  const colors = ['#58cc02', '#1cb0f6', '#ffc800', '#ff4b4b', '#ce82ff'];
+  for (let i = 0; i < 70; i++) {
+    const s = document.createElement('i');
+    s.style.cssText = `left:${Math.random() * 100}%;background:${colors[i % 5]};animation-delay:${Math.random() * 3}s;animation-duration:${2.4 + Math.random() * 2}s`;
+    box.appendChild(s);
+  }
+}
+
+let lastRevealQ = -1, gridQ = -1;
+function render() {
+  clearInterval(timerInt);
+  if (!me.name) return show('join');
+  if (!S) return;
+  if (joinSent && !S.players.some(p => p.id === me.id)) joinSent = false; // reset/kick sonrası yeniden katılabilsin
+  ensureJoin();
+
+  // Tur kilidi: bu QR'ın turu aktif değilse bekleme/bitti ekranı
+  if (GATE && S.quizIndex && S.quizIndex !== GATE) {
+    show('gate');
+    if (S.quizIndex < GATE) {
+      $('gateIcon').innerHTML = ic('hourglass', 58, 'var(--yellow)');
+      $('gateTitle').textContent = `Tur ${GATE} henüz başlamadı`;
+      $('gateSub').textContent = 'Sırası gelince burası otomatik açılacak — ekrana bak!';
+    } else {
+      $('gateIcon').innerHTML = ic('check', 58, 'var(--sub)');
+      $('gateTitle').textContent = `Tur ${GATE} sona erdi`;
+      $('gateSub').textContent = 'Yeni tur için ekrandaki yeni QR kodu okut.';
+    }
+    return;
+  }
+
+  const inGame = S.players.some(p => p.id === me.id);
+  if (S.phase !== 'podium') $('confetti').innerHTML = '';
+
+  if (S.phase === 'lobby' || !inGame) {
+    $('waitAvatar').innerHTML = avSvg(me.avatar, 84);
+    $('waitName').textContent = me.name;
+    return show('wait');
+  }
+
+  if (S.phase === 'intro') {
+    gridQ = -1; // yeni soru geliyor: ızgara tazelensin
+    $('introQNum').textContent = `Soru ${S.qIndex + 1} / ${S.total}`;
+    return show('intro');
+  }
+
+  if (S.phase === 'question') {
+    if (answeredQ === S.qIndex) return show('locked');
+    show('answer');
+    if (gridQ !== S.qIndex) { // şıklar sadece soru değişince kurulur (her state'te zıplamasın)
+      gridQ = S.qIndex;
+      $('qQuestion').textContent = S.question.text;
+      $('answerGrid').innerHTML = S.question.answers.map((a, i) =>
+        `<button class="abtn c${i}" onclick="sendAnswer(${i})">${SHAPES[i]}<small>${esc(a)}</small></button>`
+      ).join('');
+    }
+    const tick = () => { $('qTimer').innerHTML = `${ic('clock', 18)} ${Math.max(0, Math.ceil((S.endsAt - nowSrv()) / 1000))}`; };
+    tick(); timerInt = setInterval(tick, 250);
+    return;
+  }
+
+  if (S.phase === 'reveal') {
+    const r = S.results[me.id];
+    const rk = myRank();
+    const fresh = lastRevealQ !== S.qIndex; // titreşim/flash sadece ilk gelişte
+    lastRevealQ = S.qIndex;
+    show('result');
+    $('resStreak').classList.add('hidden');
+    if (!r) {
+      $('resIcon').innerHTML = ic('clock', 60, 'var(--sub)');
+      $('resTitle').textContent = 'Cevap vermedin';
+      $('resPoints').textContent = '+0';
+      $('resPoints').className = 'points zero';
+    } else if (r.index === S.correct) {
+      $('resIcon').innerHTML = ic('check', 64, 'var(--green)');
+      $('resTitle').textContent = 'Doğru!';
+      $('resPoints').className = 'points';
+      fresh ? countUp($('resPoints'), r.points) : ($('resPoints').textContent = `+${r.points}`);
+      if (rk && rk.streak >= 2) {
+        $('resStreak').innerHTML = `${ic('flame', 17)} ${rk.streak} seri! +${Math.min(500, (rk.streak - 1) * 100)} bonus`;
+        $('resStreak').classList.remove('hidden');
+      }
+      if (fresh) { flash('good'); navigator.vibrate && navigator.vibrate([30, 40, 30]); }
+    } else {
+      $('resIcon').innerHTML = ic('x', 64, 'var(--red)');
+      $('resTitle').textContent = 'Yanlış';
+      $('resPoints').textContent = '+0';
+      $('resPoints').className = 'points zero';
+      if (fresh) { flash('bad'); navigator.vibrate && navigator.vibrate(150); }
+    }
+    $('resRank').textContent = rk ? `${rk.rank}. sıradasın · ${rk.score} puan` : '';
+    return;
+  }
+
+  if (S.phase === 'leaderboard') {
+    const rk = myRank();
+    show('result');
+    $('resIcon').innerHTML = ic('chart', 60, 'var(--blue)');
+    $('resTitle').textContent = 'Sıralama';
+    $('resPoints').textContent = '';
+    $('resPoints').className = 'points';
+    $('resStreak').classList.add('hidden');
+    $('resRank').textContent = rk ? `${rk.rank}. sıradasın · ${rk.score} puan` : '';
+    return;
+  }
+
+  if (S.phase === 'podium') {
+    const rk = myRank();
+    show('final');
+    const colors = { 1: 'var(--yellow)', 2: '#cbd5e1', 3: '#d97706' };
+    $('finIcon').innerHTML = ic('trophy', 64, (rk && colors[rk.rank]) || 'var(--sub)');
+    $('finTitle').textContent = rk && rk.rank <= 3 ? `${rk.rank}. oldun!` : 'Oyun bitti!';
+    $('finScore').textContent = rk ? `${rk.rank}. sıra · ${rk.correct}/${S.total} doğru · ${rk.score} puan` : '';
+    if (rk && rk.rank <= 3) confettiBurst();
+  }
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// Not: join artık ensureJoin ile atılıyor — tur kilidi (GATE) varsa aktif tur eşleşene kadar bekler.
+
+/* Canlı veri: önce SSE; tünel/proxy stream'i geçirmiyorsa polling'e düş */
+let lastKey = '';
+function apply(s) {
+  if (s.now) clockOffset = s.now - Date.now();
+  const key = JSON.stringify({ ...s, now: 0 }); // değişmeyen state'te render etme (animasyonlar tekrar oynamasın)
+  if (key === lastKey) return;
+  lastKey = key;
+  S = s;
+  render();
+}
+const poll = () => api('state').then(apply).catch(() => {});
+poll();
+setInterval(poll, 1200);
 </script>
 </body>
 </html>

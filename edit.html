@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz — Soru Editörü</title>
+<style>
+  :root {
+    --bg: #131f24; --card: #202f36; --line: #37464f; --txt: #f1f7fb; --sub: #8ba6b1;
+    --green: #58cc02; --green-d: #46a302; --blue: #1cb0f6; --red: #ff4b4b; --yellow: #ffc800;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--txt); min-height: 100vh; }
+  header {
+    position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 2px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; gap: 12px;
+  }
+  header .title { font-weight: 800; font-size: 19px; }
+  .hbtns { display: flex; gap: 10px; align-items: center; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 80px; display: flex; flex-direction: column; gap: 18px; }
+
+  .qcard { background: var(--card); border: 2px solid var(--line); border-bottom-width: 5px; border-radius: 18px; padding: 18px; animation: pop .3s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop { from { transform: scale(.92); opacity: 0; } }
+  .qhead { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .qnum { font-weight: 800; color: var(--yellow); font-size: 15px; letter-spacing: 1px; }
+  .qhead .spacer { flex: 1; }
+  .icoBtn { background: none; border: 2px solid var(--line); color: var(--sub); border-radius: 10px; width: 34px; height: 34px; cursor: pointer; font-size: 15px; font-weight: 800; }
+  .icoBtn:hover { border-color: var(--sub); color: var(--txt); }
+  .icoBtn.del:hover { border-color: var(--red); color: var(--red); }
+
+  textarea, input[type=text] {
+    font: inherit; font-weight: 700; color: var(--txt); background: var(--bg);
+    border: 2px solid var(--line); border-radius: 12px; padding: 11px 14px; width: 100%; outline: none; resize: none;
+  }
+  textarea:focus, input[type=text]:focus { border-color: var(--blue); }
+  textarea { font-size: 17px; margin-bottom: 12px; }
+
+  .ansRow { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .dot { width: 34px; height: 34px; min-width: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #fff; }
+  .d0 { background: var(--red); } .d1 { background: var(--blue); } .d2 { background: var(--yellow); color: #3c2c00; } .d3 { background: var(--green); }
+  .correctBtn {
+    min-width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--line); background: none;
+    color: var(--sub); font-size: 17px; cursor: pointer; font-weight: 800;
+  }
+  .correctBtn.sel { background: var(--green); border-color: var(--green-d); color: #063e00; box-shadow: 0 0 0 3px rgba(88,204,2,.25); }
+
+  .timeRow { display: flex; gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+  .timeLbl { font-size: 13px; font-weight: 800; color: var(--sub); text-transform: uppercase; letter-spacing: 1px; margin-right: 4px; }
+  .tchip { border: 2px solid var(--line); background: none; color: var(--sub); border-radius: 999px; padding: 7px 15px; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+  .tchip.sel { background: var(--blue); border-color: #1899d6; color: #04304a; }
+
+  .addBtn {
+    border: 2px dashed var(--line); background: none; color: var(--sub); border-radius: 18px; padding: 20px;
+    font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .addBtn:hover { border-color: var(--green); color: var(--green); }
+
+  .cta {
+    font: inherit; font-weight: 800; font-size: 15px; letter-spacing: 1px; text-transform: uppercase;
+    border: 0; cursor: pointer; padding: 12px 26px; border-radius: 14px;
+    background: var(--green); color: #063e00; box-shadow: 0 4px 0 var(--green-d);
+  }
+  .cta:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--green-d); }
+  .ghost { font: inherit; font-weight: 700; font-size: 13px; background: var(--card); color: var(--sub); border: 2px solid var(--line); border-radius: 12px; padding: 10px 16px; text-decoration: none; text-transform: uppercase; letter-spacing: .5px; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--card); border: 2px solid var(--green); color: var(--txt); font-weight: 800;
+    padding: 13px 26px; border-radius: 14px; transition: transform .3s cubic-bezier(.34,1.56,.64,1); z-index: 20;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.err { border-color: var(--red); }
+
+  .qbar {
+    max-width: 760px; margin: 18px auto 0; padding: 0 16px;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .qbar select {
+    font: inherit; font-weight: 800; font-size: 15px; color: var(--txt);
+    background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px;
+    flex: 1; min-width: 140px; outline: none;
+  }
+  .qbar .ghost { cursor: pointer; white-space: nowrap; }
+  .csvHint { max-width: 760px; margin: 8px auto 0; padding: 0 16px; font-size: 13px; color: var(--sub); }
+  .csvHint a { color: var(--blue); }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">✏️ Soru Editörü</div>
+  <div class="hbtns">
+    <a class="ghost" href="host.html">← Kumanda</a>
+    <button class="cta" id="saveBtn">Kaydet</button>
+  </div>
+</header>
+<div class="qbar">
+  <select id="quizSel"></select>
+  <button class="ghost" id="newQuizBtn">+ Yeni quiz</button>
+  <button class="ghost" id="delQuizBtn">Quizi sil</button>
+  <button class="ghost" id="impBtn">⬆ İçe aktar</button>
+  <button class="ghost" id="expBtn">⬇ İndir</button>
+  <input type="file" id="fileInp" accept=".csv,.json,text/csv,application/json" hidden>
+</div>
+<div class="csvHint">
+  CSV/JSON içe aktar: sütunlar <b>soru; şık1; şık2; şık3; şık4; doğru (1-4); süre (sn)</b> —
+  <a id="sampleCsv" download="ornek-quiz.csv">örnek CSV indir</a>
+</div>
+<main id="list"></main>
+<div id="toast"></div>
+
+<script>
+// Bulut backend: Supabase RPC (her şey tek fonksiyonda, atomik)
+const API = 'https://cowiamswgtlthjxflflg.supabase.co/rest/v1/rpc/quiz_api';
+const APIKEY = 'sb_publishable_W97JQw6TPElmBq2eeve64Q_6O5eMenV';
+async function api(action, payload = {}) {
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: APIKEY }, body: JSON.stringify({ action, payload }) });
+  return r.json();
+}
+
+const TIMES = [10, 15, 20, 30, 45, 60];
+const $ = id => document.getElementById(id);
+let qs = [];
+let activeQuiz = '';
+
+async function loadAll() {
+  const z = await api('quizzes_list');
+  activeQuiz = z.active;
+  $('quizSel').innerHTML = z.list.map(q =>
+    `<option value="${esc(q.name)}" ${q.name === z.active ? 'selected' : ''}>${esc(q.name)} (${q.count} soru)</option>`
+  ).join('');
+  qs = await api('questions_get');
+  render();
+}
+loadAll();
+
+/* ---- Quiz kütüphanesi ---- */
+$('quizSel').onchange = async () => {
+  const r = await api('quiz_select', { name: $('quizSel').value });
+  if (!r.ok) toast(r.error, true);
+  loadAll();
+};
+$('newQuizBtn').onclick = async () => {
+  const name = prompt('Yeni quiz adı:');
+  if (!name || !name.trim()) return;
+  const r = await api('quiz_save', {
+    name: name.trim(),
+    questions: [{ text: 'Yeni soru', answers: ['Şık 1', 'Şık 2', 'Şık 3', 'Şık 4'], correct: 0, time: 20, points: 100 }],
+  });
+  r.ok ? toast(`✓ "${name.trim()}" oluşturuldu`) : toast(r.error, true);
+  loadAll();
+};
+$('delQuizBtn').onclick = async () => {
+  if (!confirm(`"${activeQuiz}" quizi silinsin mi?`)) return;
+  const r = await api('quiz_delete', { name: activeQuiz });
+  r.ok ? toast('✓ Silindi') : toast(r.error, true);
+  loadAll();
+};
+
+/* ---- İçe / dışa aktarma ---- */
+$('impBtn').onclick = () => $('fileInp').click();
+$('fileInp').onchange = async () => {
+  const f = $('fileInp').files[0];
+  if (!f) return;
+  const text = await f.text();
+  let parsed;
+  try {
+    if (/\.json$/i.test(f.name) || text.trim().startsWith('[') || text.trim().startsWith('{')) {
+      const j = JSON.parse(text);
+      parsed = Array.isArray(j) ? j : j.questions;
+    } else {
+      parsed = csvToQuestions(text);
+    }
+  } catch (e) { parsed = null; }
+  $('fileInp').value = '';
+  if (!parsed || !parsed.length) return toast('Dosya okunamadı — format kontrol et', true);
+  qs = parsed.map(q => ({
+    text: String(q.text || ''),
+    answers: (Array.isArray(q.answers) ? q.answers : q.options || []).concat(['', '', '', '']).slice(0, 4).map(String),
+    correct: Number.isInteger(q.correct) ? Math.min(3, Math.max(0, q.correct)) : (Number.isInteger(q.correctIndex) ? Math.min(3, Math.max(0, q.correctIndex)) : 0),
+    time: parseInt(q.time) || parseInt(q.timeLimitSec) || 20,
+    points: parseInt(q.points) || 100, // 200 = çift puan turu
+  }));
+  render();
+  toast(`✓ ${qs.length} soru yüklendi — Kaydet'e basmayı unutma`);
+};
+$('expBtn').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(qs, null, 2)], { type: 'application/json' }));
+  a.download = `${activeQuiz || 'quiz'}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+/* CSV: soru; şık1-4; doğru (1-4 veya A-D); süre. Ayraç ; veya , — tırnaklı alan destekli */
+function parseCsv(text) {
+  text = text.replace(/^﻿/, '');
+  const head = text.split('\n')[0];
+  const delim = (head.match(/;/g) || []).length >= (head.match(/,/g) || []).length ? ';' : ',';
+  const rows = []; let row = [], cell = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else inQ = false; }
+      else cell += c;
+    } else if (c === '"') inQ = true;
+    else if (c === delim) { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); cell = '';
+      if (row.some(x => x.trim())) rows.push(row);
+      row = [];
+    } else cell += c;
+  }
+  row.push(cell);
+  if (row.some(x => x.trim())) rows.push(row);
+  return rows;
+}
+function csvToQuestions(text) {
+  const out = [];
+  for (const r of parseCsv(text)) {
+    if (r.length < 6) continue;
+    const cor = String(r[5]).trim().toUpperCase();
+    if (!/^[1-4A-D]$/.test(cor)) continue; // başlık satırı da böyle elenir
+    const ci = /^[1-4]$/.test(cor) ? +cor - 1 : cor.charCodeAt(0) - 65;
+    out.push({
+      text: String(r[0]).trim(),
+      answers: [r[1], r[2], r[3], r[4]].map(s => String(s).trim()),
+      correct: ci,
+      time: parseInt(r[6]) || 20,
+    });
+  }
+  return out;
+}
+
+// Örnek CSV (Excel için BOM'lu)
+$('sampleCsv').href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(
+  '﻿Soru;Şık A;Şık B;Şık C;Şık D;Doğru (1-4);Süre (sn)\n' +
+  'Türkiye\'nin başkenti neresidir?;İstanbul;Ankara;İzmir;Bursa;2;15\n' +
+  'Dünyanın en büyük okyanusu?;Atlas;Hint;Pasifik;Arktik;3;20\n'
+);
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function render() {
+  $('list').innerHTML = qs.map((q, qi) => `
+    <div class="qcard">
+      <div class="qhead">
+        <span class="qnum">SORU ${qi + 1}</span>
+        <span class="spacer"></span>
+        <button class="icoBtn" onclick="move(${qi},-1)" ${qi === 0 ? 'disabled' : ''}>↑</button>
+        <button class="icoBtn" onclick="move(${qi},1)" ${qi === qs.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="icoBtn del" onclick="del(${qi})">✕</button>
+      </div>
+      <textarea rows="2" placeholder="Soru metni..." oninput="qs[${qi}].text=this.value">${esc(q.text)}</textarea>
+      ${q.answers.map((a, ai) => `
+        <div class="ansRow">
+          <span class="dot d${ai}">${['▲','◆','●','■'][ai]}</span>
+          <input type="text" placeholder="${ai + 1}. şık" value="${esc(a)}" maxlength="80" oninput="qs[${qi}].answers[${ai}]=this.value">
+          <button class="correctBtn ${q.correct === ai ? 'sel' : ''}" title="Doğru şık" onclick="setCorrect(${qi},${ai})">✓</button>
+        </div>`).join('')}
+      <div class="timeRow">
+        <span class="timeLbl">⏱ Süre</span>
+        ${TIMES.map(t => `<button class="tchip ${(q.time || 20) === t ? 'sel' : ''}" onclick="setTime(${qi},${t})">${t} sn</button>`).join('')}
+      </div>
+    </div>`).join('') +
+    `<button class="addBtn" onclick="add()">+ Soru ekle</button>`;
+}
+
+function add() {
+  qs.push({ text: '', answers: ['', '', '', ''], correct: 0, time: 20 });
+  render();
+  const cards = document.querySelectorAll('.qcard');
+  cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function del(i) { if (qs.length <= 1) return toast('En az 1 soru olmalı', true); qs.splice(i, 1); render(); }
+function move(i, d) { const t = qs[i]; qs[i] = qs[i + d]; qs[i + d] = t; render(); }
+function setCorrect(qi, ai) { qs[qi].correct = ai; render(); }
+function setTime(qi, t) { qs[qi].time = t; render(); }
+
+let toastT;
+function toast(msg, err) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = err ? 'show err' : 'show';
+  clearTimeout(toastT);
+  toastT = setTimeout(() => (el.className = ''), 2600);
+}
+
+$('saveBtn').onclick = async () => {
+  for (let i = 0; i < qs.length; i++) {
+    const q = qs[i];
+    if (!q.text.trim()) return toast(`Soru ${i + 1}: metin boş`, true);
+    if (q.answers.some(a => !a.trim())) return toast(`Soru ${i + 1}: boş şık var`, true);
+  }
+  const j = await api('questions_save', { questions: qs });
+  if (j.ok) toast(`✓ Kaydedildi (${j.count} soru)`);
+  else toast(j.error || 'Kaydedilemedi', true);
+};
+</script>
+</body>
+</html>
