@@ -258,6 +258,12 @@ const JOIN_URL = 'https://izbari.github.io/quiz-link/';
 const SHAPES = ['▲', '◆', '●', '■'];
 const $ = id => document.getElementById(id);
 let S = null, timerInt = null, lastTickSec = null, tilesKey = '';
+let introKey = -1, introTO = null, introN = 0;
+function stepIntro() {
+  $('countNum').textContent = introN;
+  SND.tick(); // rakamla aynı anda — tam senkron
+  if (introN > 1) { introN--; introTO = setTimeout(stepIntro, 1000); }
+}
 
 // /screen = projektöre yansıtılan salt-gösterim modu; /host = kumanda (admin)
 const SCREEN = location.pathname.endsWith('/screen') || new URLSearchParams(location.search).has('screen');
@@ -569,12 +575,20 @@ function render() {
     $('intro').classList.remove('hidden');
     $('introNum').textContent = `Soru ${S.qIndex + 1}`;
     $('introText').textContent = S.question.text;
-    const tick = () => {
-      const sec = Math.min(3, Math.max(1, Math.ceil((S.endsAt - nowSrv()) / 1000))); // tamponda da 3 göster — ses+sayı senkron
-      if (sec !== lastTickSec) { SND.tick(); lastTickSec = sec; }
-      $('countNum').textContent = sec;
-    };
-    tick(); timerInt = setInterval(tick, 120);
+    // Sabit tempolu 3-2-1: sunucu süresine BİR KEZ hizalan, sonra yerel 1000ms adımlarla say.
+    // Rakam ve tik sesi aynı anda üretilir — örüntü bozulmaz.
+    if (introKey !== S.qIndex) {
+      introKey = S.qIndex;
+      clearTimeout(introTO);
+      $('countNum').textContent = 3;
+      const rem = S.endsAt - nowSrv();
+      const begin = (n) => { introN = n; stepIntro(); };
+      if (rem > 3200) introTO = setTimeout(() => begin(3), rem - 3200);
+      else begin(Math.max(1, Math.min(3, Math.ceil((rem - 200) / 1000))));
+    }
+  } else {
+    introKey = -1;
+    clearTimeout(introTO);
   }
 
   if (S.phase === 'question' || S.phase === 'reveal') {
