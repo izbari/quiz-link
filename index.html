@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Quiz</title>
+</head>
+<body style="margin:0;font-family:-apple-system,sans-serif;background:#131f24;color:#f1f7fb;display:grid;place-items:center;height:100vh">
+<p style="font-weight:700">Quiz'e yönlendiriliyorsun…</p>
+<script>
+  // QR'lar bu sabit sayfayı gösterir; TARGET o günkü sunucuya işaret eder (start-public.sh günceller)
+  var TARGET = "https://immune-nat-van-tables.trycloudflare.com";
+  var q = new URLSearchParams(location.search).get('q');
+  location.replace(TARGET + (q ? '/?q=' + q : '/'));
+</script>
+</body>
+</html>
