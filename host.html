@@ -515,7 +515,8 @@ function render() {
 
   let label = atHome ? null : (MAIN[S.phase][0] && MAIN[S.phase][0]());
   if (S.phase === 'reveal' || S.phase === 'leaderboard')
-    label = S.qIndex + 1 < S.total ? `Sonraki soru ${ic('arrowRight', 16)}` : `${ic('trophy', 16)} Podyum`;
+    label = S.qIndex + 1 < S.total ? `Sonraki soru ${ic('arrowRight', 16)}`
+          : nextQuizName() ? `${ic('trophy', 16)} Podyum` : `${ic('trophy', 16)} Genel Sıralama`; // son quiz: direkt gün sonu
   if (S.phase === 'podium') {
     const next = nextQuizName();
     label = next ? `Sıradaki: ${esc(next)} ${ic('arrowRight', 16)}` : `${ic('trophy', 16)} Genel Sıralama`;
