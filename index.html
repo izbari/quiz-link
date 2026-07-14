@@ -251,7 +251,8 @@ idSet('qid', me.id);
 const GATE = parseInt(new URLSearchParams(location.search).get('q'), 10) || 0;
 let joinSent = false;
 function ensureJoin() {
-  if (me.name && !joinSent && (!GATE || (S && S.quizIndex === GATE))) {
+  // Kilit sadece İLERİ turlar için: quizIndex >= GATE ise katıl (eski sayfada kalan öğrenci yeni tura otomatik akar)
+  if (me.name && !joinSent && (!GATE || (S && S.quizIndex >= GATE))) {
     joinSent = true;
     join(me.name);
   }
@@ -366,18 +367,13 @@ function render() {
   }
   STANDP = null; // faz değişince tazelensin
 
-  // Tur kilidi: bu QR'ın turu aktif değilse bekleme/bitti ekranı
-  if (GATE && S.quizIndex && S.quizIndex !== GATE) {
+  // Tur kilidi: SADECE ileri turlara erken girişi engeller.
+  // Eski turun sayfası açık kalan öğrenci, aktif tura otomatik dahil olur (yeniden QR gerekmez).
+  if (GATE && S.quizIndex && S.quizIndex < GATE) {
     show('gate');
-    if (S.quizIndex < GATE) {
-      $('gateIcon').innerHTML = ic('hourglass', 58, 'var(--yellow)');
-      $('gateTitle').textContent = `Tur ${GATE} henüz başlamadı`;
-      $('gateSub').textContent = 'Sırası gelince burası otomatik açılacak — ekrana bak!';
-    } else {
-      $('gateIcon').innerHTML = ic('check', 58, 'var(--sub)');
-      $('gateTitle').textContent = `Tur ${GATE} sona erdi`;
-      $('gateSub').textContent = 'Yeni tur için ekrandaki yeni QR kodu okut.';
-    }
+    $('gateIcon').innerHTML = ic('hourglass', 58, 'var(--yellow)');
+    $('gateTitle').textContent = `Tur ${GATE} henüz başlamadı`;
+    $('gateSub').textContent = 'Sırası gelince burası otomatik açılacak — ekrana bak!';
     return;
   }
 
