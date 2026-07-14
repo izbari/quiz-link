@@ -86,6 +86,14 @@
   .rankline { font-size: 18px; background: var(--card); border: 2px solid var(--line); padding: 11px 24px; border-radius: 999px; font-weight: 800; }
   .flame { font-size: 20px; color: var(--yellow); background: rgba(255,200,0,.12); border: 2px solid rgba(255,200,0,.35); border-radius: 999px; padding: 7px 18px; font-weight: 800; animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
 
+  /* Genel sıralama listesi */
+  #ovList { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
+  .ovRow { display: flex; gap: 10px; align-items: center; background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 10px 14px; font-weight: 800; font-size: 16px; text-align: left; animation: pop .35s cubic-bezier(.34,1.56,.64,1) backwards; }
+  .ovRow:nth-child(2){animation-delay:.05s}.ovRow:nth-child(3){animation-delay:.1s}.ovRow:nth-child(4){animation-delay:.15s}.ovRow:nth-child(5){animation-delay:.2s}
+  .ovRow.me { border-color: var(--green); }
+  .ovRow .r { width: 26px; color: var(--sub); }
+  .ovRow .sc { margin-left: auto; color: var(--green); }
+
   /* Confetti */
   #confetti i { position: fixed; top: -24px; width: 9px; height: 15px; border-radius: 3px; animation: fall linear infinite; z-index: 50; }
   @keyframes fall { to { transform: translateY(112vh) rotate(720deg); } }
@@ -139,6 +147,13 @@
     <div class="points" id="resPoints"></div>
     <div class="flame hidden" id="resStreak"></div>
     <div class="rankline" id="resRank"></div>
+  </section>
+
+  <section id="overall" class="sec hidden">
+    <div class="big" id="ovIcon"></div>
+    <h1>Genel Sıralama</h1>
+    <div class="rankline hidden" id="ovMine"></div>
+    <div id="ovList"></div>
   </section>
 
   <section id="final" class="sec hidden">
@@ -212,12 +227,18 @@ function avSvg(seed, size = 24) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" style="vertical-align:middle"><rect width="48" height="48" rx="14" fill="${bg}"/>${eyes}${mouths[s % 3]}</svg>`;
 }
 
+// Kimlik: localStorage + cookie yedeği (Safari bazen localStorage'ı düşürüyor)
+function ckGet(k) { const m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
+function ckSet(k, v) { document.cookie = k + '=' + encodeURIComponent(v) + '; max-age=43200; path=/; SameSite=Lax'; }
+function idGet(k) { return localStorage.getItem(k) || ckGet(k) || ''; }
+function idSet(k, v) { localStorage.setItem(k, v); ckSet(k, v); }
+
 const me = {
-  id: localStorage.getItem('qid') || uuid(),
-  name: localStorage.getItem('qname') || '',
-  avatar: localStorage.getItem('qavatar') || String(Math.floor(Math.random() * 12)),
+  id: idGet('qid') || uuid(),
+  name: idGet('qname'),
+  avatar: idGet('qavatar') || String(Math.floor(Math.random() * 12)),
 };
-localStorage.setItem('qid', me.id);
+idSet('qid', me.id);
 
 // Tur kilidi: QR'daki ?q=N sadece o tur aktifken oyuna alır (slayt sırası gelmeden girilemez)
 const GATE = parseInt(new URLSearchParams(location.search).get('q'), 10) || 0;
@@ -243,16 +264,16 @@ $('lockedIcon').innerHTML = ic('hourglass', 58, 'var(--blue)');
 
 function join(name) {
   me.name = name;
-  localStorage.setItem('qname', name);
-  localStorage.setItem('qavatar', me.avatar);
+  idSet('qname', name);
+  idSet('qavatar', me.avatar);
   api('join', { id: me.id, name, avatar: me.avatar });
 }
 $('joinBtn').onclick = () => {
   const n = $('nameInput').value.trim();
   if (!n) return;
   me.name = n;
-  localStorage.setItem('qname', n);
-  localStorage.setItem('qavatar', me.avatar);
+  idSet('qname', n);
+  idSet('qavatar', me.avatar);
   ensureJoin(); // tur kilitliyse POST sırası gelince atılır
   render();
 };
@@ -271,7 +292,7 @@ function myRank() {
 }
 
 function show(id) {
-  ['join','wait','gate','intro','answer','locked','result','final'].forEach(s => $(s).classList.add('hidden'));
+  ['join','wait','gate','intro','answer','locked','result','final','overall'].forEach(s => $(s).classList.add('hidden'));
   $(id).classList.remove('hidden');
 }
 function flash(cls) {
@@ -290,13 +311,32 @@ function confettiBurst() {
   }
 }
 
-let lastRevealQ = -1, gridQ = -1;
+let lastRevealQ = -1, gridQ = -1, STANDP = null;
 function render() {
   clearInterval(timerInt);
   if (!me.name) return show('join');
   if (!S) return;
   if (joinSent && !S.players.some(p => p.id === me.id)) joinSent = false; // reset/kick sonrası yeniden katılabilsin
   ensureJoin();
+
+  // Gün sonu genel sıralaması: hangi tur QR'ında olursa olsun herkese gösterilir
+  if (S.phase === 'standings') {
+    show('overall');
+    $('ovIcon').innerHTML = ic('trophy', 60, 'var(--yellow)');
+    if (!STANDP) {
+      api('standings_get').then(st => { STANDP = st; render(); });
+      return;
+    }
+    const meKey = me.name.toLocaleLowerCase('tr');
+    const idx = STANDP.players.findIndex(p => p.name.toLocaleLowerCase('tr') === meKey);
+    $('ovMine').classList.toggle('hidden', idx < 0);
+    if (idx >= 0) $('ovMine').textContent = `Sen: ${idx + 1}. sıra · ${STANDP.players[idx].total} puan`;
+    $('ovList').innerHTML = STANDP.players.slice(0, 10).map((p, i) =>
+      `<div class="ovRow ${i === idx ? 'me' : ''}"><span class="r">${i + 1}.</span>${avSvg(p.avatar, 22)} ${esc(p.name)}<span class="sc">${p.total}</span></div>`).join('');
+    if (idx === 0) confettiBurst();
+    return;
+  }
+  STANDP = null; // faz değişince tazelensin
 
   // Tur kilidi: bu QR'ın turu aktif değilse bekleme/bitti ekranı
   if (GATE && S.quizIndex && S.quizIndex !== GATE) {
