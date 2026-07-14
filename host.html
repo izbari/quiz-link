@@ -569,7 +569,7 @@ function render() {
     $('introNum').textContent = `Soru ${S.qIndex + 1}`;
     $('introText').textContent = S.question.text;
     const tick = () => {
-      const sec = Math.max(1, Math.ceil((S.endsAt - nowSrv()) / 1000));
+      const sec = Math.min(3, Math.max(1, Math.ceil((S.endsAt - nowSrv()) / 1000))); // tamponda da 3 göster — ses+sayı senkron
       if (sec !== lastTickSec) { SND.tick(); lastTickSec = sec; }
       $('countNum').textContent = sec;
     };
