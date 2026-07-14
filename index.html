@@ -86,6 +86,11 @@
   .rankline { font-size: 18px; background: var(--card); border: 2px solid var(--line); padding: 11px 24px; border-radius: 999px; font-weight: 800; }
   .flame { font-size: 20px; color: var(--yellow); background: rgba(255,200,0,.12); border: 2px solid rgba(255,200,0,.35); border-radius: 999px; padding: 7px 18px; font-weight: 800; animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
 
+  /* Bilinen isimler (Safari kimliği unutursa tek dokunuşla devral) */
+  #knownNames { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 340px; }
+  .knm { font: inherit; font-size: 15px; font-weight: 800; color: var(--txt); background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 8px 16px; cursor: pointer; }
+  .knm:active { border-color: var(--green); transform: scale(.96); }
+
   /* Genel sıralama listesi */
   #ovList { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
   .ovRow { display: flex; gap: 10px; align-items: center; background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 10px 14px; font-weight: 800; font-size: 16px; text-align: left; animation: pop .35s cubic-bezier(.34,1.56,.64,1) backwards; }
@@ -107,6 +112,8 @@
     <h1>Quiz'e Katıl</h1>
     <div class="sub">Avatarını seç</div>
     <div id="avatars"></div>
+    <div class="sub hidden" id="knownTitle">Bugün zaten katıldıysan adına dokun:</div>
+    <div id="knownNames"></div>
     <input id="nameInput" placeholder="Adın" maxlength="20" autocomplete="off">
     <button class="cta" id="joinBtn">Katıl</button>
   </section>
@@ -259,6 +266,27 @@ function renderAvatars() {
 }
 function pickAv(a) { me.avatar = String(a); renderAvatars(); }
 renderAvatars();
+
+// Safari vb. kimliği unutursa: günün isimleri tek dokunuşla seçilir (sunucu isimle devralır)
+async function loadKnownNames() {
+  try {
+    const st = await api('standings_get');
+    const names = new Set(st.players.map(p => p.name));
+    (S ? S.players : []).forEach(p => names.add(p.name));
+    const arr = [...names].slice(0, 40);
+    if (!arr.length) return;
+    $('knownTitle').classList.remove('hidden');
+    $('knownNames').innerHTML = arr.map(n => `<button class="knm">${esc(n)}</button>`).join('');
+    $('knownNames').querySelectorAll('.knm').forEach(b => (b.onclick = () => {
+      me.name = b.textContent;
+      idSet('qname', me.name);
+      idSet('qavatar', me.avatar);
+      ensureJoin();
+      render();
+    }));
+  } catch {}
+}
+if (!me.name) loadKnownNames();
 $('introIcon').innerHTML = ic('flag', 58, 'var(--yellow)');
 $('lockedIcon').innerHTML = ic('hourglass', 58, 'var(--blue)');
 
