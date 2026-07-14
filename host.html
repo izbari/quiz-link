@@ -263,6 +263,7 @@ function stepIntro() {
   $('countNum').textContent = introN;
   SND.tick(); // rakamla aynı anda — tam senkron
   if (introN > 1) { introN--; introTO = setTimeout(stepIntro, 1000); }
+  else { setTimeout(() => api('state').then(apply).catch(() => {}), 1050); } // "1" biter bitmez soruyu çek — poll bekleme yok
 }
 
 // /screen = projektöre yansıtılan salt-gösterim modu; /host = kumanda (admin)
